@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-profiler"
+version = "0.1.0"
+description = "A tabular data profiler to use in the command-line interface."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" } 
+authors = [
+    { name ="Joseph Macolino", email = "jpmacolino@gmail.com" }
+]
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "rich>=13.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+data-profiler = "data_profiler.cli:main"
