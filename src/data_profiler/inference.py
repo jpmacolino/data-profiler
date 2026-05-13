@@ -9,6 +9,38 @@ ColumnType = Literal["integer", "float", "boolean", "datetime", "string", "null"
 _THRESHOLD = 0.99
 
 
+def _ratio(mask: pd.Series, total: int) -> float:
+    return mask.sum() / total
+
+
+def _is_int_value(v: object) -> bool:
+    if isinstance(v, bool):
+        return False
+    if isinstance(v, int):
+        return True
+    if isinstance(v, str):
+        try:
+            int(v)
+            return True
+        except ValueError:
+            return False
+    return False
+
+
+def _is_float_value(v: object) -> bool:
+    if isinstance(v, bool):
+        return False
+    if isinstance(v, float):
+        return True
+    if isinstance(v, str):
+        try:
+            float(v)
+            return True
+        except ValueError:
+            return False
+    return False
+
+
 def infer_column_type(series: pd.Series) -> ColumnType:
     """Infer the semantic type of a pandas Series.
 
@@ -32,57 +64,28 @@ def infer_column_type(series: pd.Series) -> ColumnType:
 
     total = len(non_null)
 
-    def _ratio(mask: pd.Series) -> float:
-        return mask.sum() / total
-
     # Boolean: pandas bool dtype, or object series whose values are all bool
     if pd.api.types.is_bool_dtype(non_null):
         return "boolean"
     if pd.api.types.is_object_dtype(non_null):
         bool_mask = non_null.map(lambda v: isinstance(v, bool))
-        if _ratio(bool_mask) >= _THRESHOLD:
+        if _ratio(bool_mask, total) >= _THRESHOLD:
             return "boolean"
 
     # Integer: pandas integer dtypes, or object values castable to int (but not float)
     if pd.api.types.is_integer_dtype(non_null):
         return "integer"
     if pd.api.types.is_object_dtype(non_null):
-        def _is_int(v: object) -> bool:
-            if isinstance(v, bool):
-                return False
-            if isinstance(v, int):
-                return True
-            if isinstance(v, str):
-                try:
-                    int(v)
-                    return True
-                except ValueError:
-                    return False
-            return False
-
-        int_mask = non_null.map(_is_int)
-        if _ratio(int_mask) >= _THRESHOLD:
+        int_mask = non_null.map(_is_int_value)
+        if _ratio(int_mask, total) >= _THRESHOLD:
             return "integer"
 
     # Float: pandas float dtypes, or object values castable to float (excluding pure ints)
     if pd.api.types.is_float_dtype(non_null):
         return "float"
     if pd.api.types.is_object_dtype(non_null):
-        def _is_float(v: object) -> bool:
-            if isinstance(v, bool):
-                return False
-            if isinstance(v, float):
-                return True
-            if isinstance(v, str):
-                try:
-                    float(v)
-                    return True
-                except ValueError:
-                    return False
-            return False
-
-        float_mask = non_null.map(_is_float)
-        if _ratio(float_mask) >= _THRESHOLD:
+        float_mask = non_null.map(_is_float_value)
+        if _ratio(float_mask, total) >= _THRESHOLD:
             return "float"
 
     # Datetime: pandas datetime dtype, or coercible via pd.to_datetime
@@ -97,7 +100,7 @@ def infer_column_type(series: pd.Series) -> ColumnType:
     # String: object or string dtype (after failing all stricter checks above)
     if pd.api.types.is_object_dtype(non_null) or pd.api.types.is_string_dtype(non_null):
         str_mask = non_null.map(lambda v: isinstance(v, str))
-        if _ratio(str_mask) >= _THRESHOLD:
+        if _ratio(str_mask, total) >= _THRESHOLD:
             return "string"
 
     return "unknown"
