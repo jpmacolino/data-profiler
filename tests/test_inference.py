@@ -2,11 +2,6 @@ import pandas as pd
 import pytest
 from data_profiler.inference import infer_column_type
 
-@pytest.fixture
-def clean_integer_series():
-    """A small series of clean integers — used as a baseline for several tests."""
-    return pd.Series([1, 2, 3, 4, 5])
-
 def test_clean_integer_column(clean_integer_series):
     assert infer_column_type(clean_integer_series) == "integer"
 
