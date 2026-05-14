@@ -18,8 +18,14 @@ dependencies = [
     "rich>=13.0",
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[project.optional-dependencies]
+dev = ["pytest"]
 
 [project.scripts]
 data-profiler = "data_profiler.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
