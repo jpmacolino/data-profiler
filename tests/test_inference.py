@@ -21,6 +21,7 @@ def test_all_null_column():
     assert infer_column_type(series) == "null"
 
 
+@pytest.mark.design_pending
 @pytest.mark.xfail(reason="Design TBD: should whole-number floats classify as integer?")
 def test_floats_with_no_fractional_part():
     series = pd.Series([1.0, 2.0, 3.0])
