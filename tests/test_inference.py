@@ -45,3 +45,39 @@ def test_integer_threshold_with_float_overlap():
     values = [1] * 98 + [1.5, 2.5]
     series = pd.Series(values)
     assert infer_column_type(series) == "float"
+
+
+def test_boolean_native_dtype():
+    series = pd.Series([True, False, True])
+    assert infer_column_type(series) == "boolean"
+
+
+def test_boolean_object_dtype():
+    series = pd.Series([True, False, True], dtype=object)
+    assert infer_column_type(series) == "boolean"
+
+
+def test_datetime_native_dtype():
+    series = pd.Series(pd.to_datetime(["2024-01-01", "2024-06-15"]))
+    assert infer_column_type(series) == "datetime"
+
+
+def test_datetime_string_coercion():
+    series = pd.Series(["2024-01-01", "2024-06-15", "2023-12-31"])
+    assert infer_column_type(series) == "datetime"
+
+@pytest.mark.design_pending
+@pytest.mark.xfail(reason="Design TBD: should null-induced float coercion preserve integer classification?")
+def test_nulls_ignored_for_classification():
+    series = pd.Series([1, 2, None, 4])
+    assert infer_column_type(series) == "integer"
+
+
+@pytest.mark.parametrize("bool_count,non_bool_count,expected", [
+    (99, 1, "boolean"),   # 99/100 → crosses 99% threshold
+    (98, 2, "unknown"),   # 98/100 → just below threshold
+])
+def test_boolean_threshold(bool_count, non_bool_count, expected):
+    values = [True] * bool_count + ["yes"] * non_bool_count
+    series = pd.Series(values)
+    assert infer_column_type(series) == expected
