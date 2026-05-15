@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "pytest-cov"]
 
 [project.scripts]
 data-profiler = "data_profiler.cli:main"
