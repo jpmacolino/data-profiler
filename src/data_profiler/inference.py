@@ -72,18 +72,18 @@ def infer_column_type(series: pd.Series) -> ColumnType:
         if _ratio(bool_mask, total) >= _THRESHOLD:
             return "boolean"
 
-    # Integer: pandas integer dtypes, or object values castable to int (but not float)
+    # Integer: pandas integer dtypes, or object/string values castable to int (but not float)
     if pd.api.types.is_integer_dtype(non_null):
         return "integer"
-    if pd.api.types.is_object_dtype(non_null):
+    if pd.api.types.is_object_dtype(non_null) or pd.api.types.is_string_dtype(non_null):
         int_mask = non_null.map(_is_int_value)
         if _ratio(int_mask, total) >= _THRESHOLD:
             return "integer"
 
-    # Float: pandas float dtypes, or object values castable to float (excluding pure ints)
+    # Float: pandas float dtypes, or object/string values castable to float (excluding pure ints)
     if pd.api.types.is_float_dtype(non_null):
         return "float"
-    if pd.api.types.is_object_dtype(non_null):
+    if pd.api.types.is_object_dtype(non_null) or pd.api.types.is_string_dtype(non_null):
         float_mask = non_null.map(_is_float_value)
         if _ratio(float_mask, total) >= _THRESHOLD:
             return "float"

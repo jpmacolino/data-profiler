@@ -81,3 +81,24 @@ def test_boolean_threshold(bool_count, non_bool_count, expected):
     values = [True] * bool_count + ["yes"] * non_bool_count
     series = pd.Series(values)
     assert infer_column_type(series) == expected
+
+
+def test_float_stored_as_string():
+    series = pd.Series(["1.5", "2.5", "3.5"])
+    assert infer_column_type(series) == "float"
+
+
+@pytest.mark.parametrize("float_count,non_float_count,expected", [
+    (99, 1, "float"),    # 99/100 → crosses 99% threshold → float
+    (98, 2, "string"),   # 98/100 → float fails 99%, datetime fails, all values are str → string
+])
+def test_float_string_threshold_parametrize(float_count, non_float_count, expected):
+    values = ["1.5"] * float_count + ["abc"] * non_float_count
+    series = pd.Series(values)
+    assert infer_column_type(series) == expected
+
+
+def test_float_string_with_integer_strings():
+    """Integer strings mixed with a float string: int check fails for '1.5', but all pass _is_float_value → float."""
+    series = pd.Series(["1", "2", "1.5"])
+    assert infer_column_type(series) == "float"
