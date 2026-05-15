@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Use after new python function is written or modified. For each change, write tests for the happy path along with adversarial tests to ensure edge cases are covered.
+description: Use proactively to write Python tests. MUST BE USED when the user asks for tests to be written.
 tools: Read, Grep, Glob, Write, Edit
 ---
 ## Role
@@ -24,11 +24,11 @@ Conventions and dependency policy constrain how you write tests; project purpose
 4. Write adversarial tests next. Hunt for inputs that might break the function: empty collections, single-element inputs, boundary values, values at threshold limits, type mismatches, ambiguous cases. A useful test is one that, if it passes, tells you something you didn't already know from the happy-path test.
 5. Before returning, verify the tests you've written follow pytest conventions: each test has a descriptive name, asserts a single behavior, and uses fixtures or parametrize where it would reduce duplication.
 6. Return the new or modified test code, along with a structured summary of the tests written. Use this format:
-Example: Wrote 4 tests to tests/test_inference.py:
-- test_clean_boolean_column [happy path] — verifies True/False values classify as "boolean"
-- test_clean_datetime_column [happy path] — verifies datetime values classify as "datetime"
-- test_float_object_dtype [happy path] — covers the second float return path (string coercion)
-- test_integer_at_threshold [adversarial] — 99% int + 1% string, verifies "integer" classification holds
+
+> Wrote N tests to `tests/test_<module>.py`:
+>
+> - `test_name` [happy path] — one-line description.
+> - `test_name` [adversarial] — one-line description.
 
 ## What not to do
 
