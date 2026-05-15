@@ -29,3 +29,6 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "design_pending: tests blocked on an unresolved design decisions.",
+]
