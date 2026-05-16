@@ -22,7 +22,7 @@ Conventions and dependency policy constrain how you write tests; project purpose
 2. Read the function(s) in their entirety. Investigate context as needed (usages, callers, related modules).
 3. Write happy-path tests first. These establish that the function behaves correctly under normal conditions and serve as the baseline against which edge cases are meaningful. Cover the primary return paths; do not write redundant tests for variations of the same path.
 4. Write adversarial tests next. Hunt for inputs that might break the function: empty collections, single-element inputs, boundary values, values at threshold limits, type mismatches, ambiguous cases. A useful test is one that, if it passes, tells you something you didn't already know from the happy-path test.
-5. Before returning, verify the tests you've written follow pytest conventions: each test has a descriptive name, asserts a single behavior, and uses fixtures or parametrize where it would reduce duplication.
+5. Before returning, verify the tests you've written follow pytest conventions: each test has a descriptive name, covers one scenario with multiple assertions on the result, and uses fixtures or parametrize where it would reduce duplication. Carve out a separate test only when (a) the assertion requires different setup than the rest of the scenario, or (b) the assertion checks a type-shape invariant (e.g., return type, JSON-serializability) rather than a specific value. Prefer a small number of well-named scenario tests over a large number of single-assertion tests.
 6. Return the new or modified test code, along with a structured summary of the tests written. Use this format:
 
 > Wrote N tests to `tests/test_<module>.py`:
