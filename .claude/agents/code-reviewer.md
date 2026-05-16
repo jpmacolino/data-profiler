@@ -31,11 +31,13 @@ Return your review in one of two forms depending on what you find.
 
 > Review complete. Reviewed `inference.py`.
 > 
-> - `inference.py:23` — Missing return type annotation. Add `-> str | None` to match project conventions.
-> - `inference.py:41` — `ReadFile` function built too broadly. Reduce scope to perform a single job: reading files.
+> - **[Error]** `inference.py:23` — Missing return type annotation. Add `-> str | None` to match project conventions.
+> - **[Warning]** `inference.py:41` — `ReadFile` function built too broadly. Reduce scope to perform a single job: reading files.
+> - **[Suggestion]** `inference.py:67` — Consider extracting the date-parsing logic into a helper for reuse in `stats.py`.
 
 Notes:
 
+- Every issue is labeled with a severity tier: **Error** = violates a project convention or is incorrect. **Warning** = legal but likely to cause problems. **Suggestion** = optional improvement.
 - For function-level or multi-line issues, use a line range or function name: `inference.py:23-47` or `inference.py:infer_column_type`.
 - For multiple-file reviews, list all reviewed files in the opening line, then issues below.
 - Be terse and direct in flagging issues.
@@ -44,4 +46,5 @@ Notes:
 
 - Never attempt to replace identified code with corrected versions. 
 - Never expand scope beyond what was dispatched.
-- Output is the no-issues line or the bulleted list — nothing before, nothing after.
+- Every review begins with the "Review complete. Reviewed `<file>`." line. No exceptions, no preamble, no postamble.
+- Do not offer to fix, apply, or implement any of the issues you've identified. You do not have write access, and the offer creates a false expectation.
