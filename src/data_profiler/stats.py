@@ -65,18 +65,25 @@ def _stats_numeric(series: pd.Series) -> NumericStats:
 def _stats_string(series: pd.Series) -> StringStats:
     """Compute descriptive statistics for a string Series.
 
-    Precondition: series has at least one non-null value. inference.py
-    classifies all-null Series as 'null', so callers routing through
-    infer_column_type satisfy this invariant automatically.
+    Precondition: series is of string type and has at least one non-null value.
+    inference.py classifies all-null Series as 'null', so callers routing
+    through infer_column_type satisfy this invariant automatically. Behavior is
+    undefined for non-string input.
 
-    Assumes the caller has verified the Series is of string type. Behavior
-    is undefined for non-string input.
+    Length statistics (min_length, max_length, mean_length) are computed over
+    non-null values only; str.len() returns NaN for nulls, which pandas
+    skipna=True (the default) handles transparently.
 
-    Length statistics are computed over non-null values; str.len() returns
-    NaN for nulls which pandas skipna=True (the default) handles transparently.
+    empty_count counts values that are exactly "" (length 0). Null values are
+    never counted as empty — a null is absent, not an empty string.
 
-    mode returns the lexicographically first value when multiple values tie,
-    matching pandas' Series.mode() sort order.
+    mode returns the most frequent non-null value, using the lexicographically
+    first value when multiple values tie, matching pandas' Series.mode() sort
+    order. mode_count is the number of times that modal value appears in the
+    series (including across both null and non-null positions, but mode can
+    never be null, so mode_count is always >= 1).
+
+    unique_count excludes nulls, following pandas' .nunique() default.
     """
     lengths = series.str.len()
     mode_val = series.mode()[0]
@@ -95,18 +102,27 @@ def _stats_string(series: pd.Series) -> StringStats:
 def _stats_datetime(series: pd.Series) -> DatetimeStats:
     """Compute descriptive statistics for a datetime Series.
 
-    Precondition: series has at least one non-null value. inference.py
-    classifies all-null Series as 'null', so callers routing through
-    infer_column_type satisfy this invariant automatically.
+    Precondition: series is of datetime type and has at least one non-null
+    value. inference.py classifies all-null Series as 'null', so callers
+    routing through infer_column_type satisfy this invariant automatically.
+    Behavior is undefined for non-datetime input.
 
-    Assumes the caller has verified the Series is of datetime type. Behavior
-    is undefined for non-datetime input.
+    min and max skip nulls (pandas default). Because the precondition
+    guarantees at least one non-null value, both are always defined — an
+    all-null series cannot reach this function.
 
-    min/max use pandas' default skipna=True behavior. range is max - min and
-    will be a pd.Timedelta.
+    range is max - min as a pd.Timedelta, representing the wall-clock distance
+    from the earliest to the latest timestamp. It is zero when all non-null
+    values are identical.
 
-    Caller is responsible for handling pd.Timestamp and pd.Timedelta in
-    serialization — these types are not JSON-serializable directly.
+    Timezone information is preserved as-is. If the series is timezone-aware,
+    min, max, and range reflect that timezone; the function makes no attempt
+    to normalize or convert timezones.
+
+    min, max, and range are not JSON-serializable directly — the caller is
+    responsible for serialization.
+
+    unique_count excludes nulls, following pandas' .nunique() default.
     """
     min_val = pd.Timestamp(series.min())
     max_val = pd.Timestamp(series.max())
