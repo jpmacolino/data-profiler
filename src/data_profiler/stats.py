@@ -4,6 +4,8 @@ from typing import TypedDict
 
 import pandas as pd
 
+from data_profiler.inference import infer_column_type
+
 
 class StringStats(TypedDict):
     """Per-column statistics for a string Series."""
@@ -36,6 +38,22 @@ class NumericStats(TypedDict):
     std: float
     min: float
     max: float
+    null_count: int
+    unique_count: int
+
+
+class BooleanStats(TypedDict):
+    """Per-column statistics for a boolean Series."""
+
+    true_count: int
+    false_count: int
+    null_count: int
+    unique_count: int
+
+
+class MinimalStats(TypedDict):
+    """Minimal statistics for null or unclassifiable Series."""
+
     null_count: int
     unique_count: int
 
@@ -133,3 +151,76 @@ def _stats_datetime(series: pd.Series) -> DatetimeStats:
         null_count=int(series.isna().sum()),
         unique_count=int(series.nunique()),
     )
+
+
+def _stats_boolean(series: pd.Series) -> BooleanStats:
+    """Compute descriptive statistics for a boolean Series.
+
+    Precondition: series is of boolean type and has at least one non-null value.
+    inference.py classifies all-null Series as 'null', so callers routing
+    through infer_column_type satisfy this invariant automatically. Behavior is
+    undefined for non-boolean input.
+
+    Pandas nullable BooleanDtype (pd.BooleanDtype) propagates pd.NA through
+    equality comparisons: `series == True` returns pd.NA for NA cells, not
+    False. To correctly count True and False values, use `.eq(True).fillna(False)`
+    and `.eq(False).fillna(False)` respectively. This avoids incorrect counts
+    on nullable boolean columns.
+
+    For object-dtype series inferred as boolean (inference.py allows up to 1%
+    non-bool values), any non-bool value that compares equal to True or False
+    via `==` (e.g., 1 or 0) will be counted accordingly. This is an accepted
+    edge case given the 99% threshold in inference.
+
+    unique_count reflects the number of distinct non-null boolean values (0, 1,
+    or 2), following pandas' .nunique() default.
+    """
+    true_count = int(series.eq(True).fillna(False).sum())
+    false_count = int(series.eq(False).fillna(False).sum())
+    return BooleanStats(
+        true_count=true_count,
+        false_count=false_count,
+        null_count=int(series.isna().sum()),
+        unique_count=int(series.nunique()),
+    )
+
+
+def _stats_minimal(series: pd.Series) -> MinimalStats:
+    """Compute minimal statistics for a null or unclassifiable Series.
+
+    Unlike the per-type stats functions, this function has no preconditions:
+    it must handle all-null inputs, empty series, and mixed-type series
+    correctly. It is the catchall for 'null' and 'unknown' column types.
+
+    unique_count excludes nulls, following pandas' .nunique() default. For
+    an all-null or empty series, unique_count is 0.
+    """
+    return MinimalStats(
+        null_count=int(series.isna().sum()),
+        unique_count=int(series.nunique()),
+    )
+
+
+def stats_for_column(series: pd.Series) -> NumericStats | StringStats | DatetimeStats | BooleanStats | MinimalStats:
+    """Dispatch a Series to the appropriate per-type stats function.
+
+    Infers the column type via infer_column_type, then routes to the matching
+    stats function. Returns MinimalStats for 'null' and 'unknown' types.
+
+    Raises ValueError for any col_type not covered by the match arms, which
+    makes gaps in coverage observable if ColumnType gains new literals.
+    """
+    col_type = infer_column_type(series)
+    match col_type:
+        case "integer" | "float":
+            return _stats_numeric(series)
+        case "string":
+            return _stats_string(series)
+        case "datetime":
+            return _stats_datetime(series)
+        case "boolean":
+            return _stats_boolean(series)
+        case "null" | "unknown":
+            return _stats_minimal(series)
+        case _:
+            raise ValueError(f"Unhandled column type: {col_type!r}")
