@@ -15,6 +15,14 @@ if (-not $file_path) {
 $basename = Split-Path $file_path -Leaf
 
 if ($basename.ToLower() -eq "readme.md") {
+    $output = @{
+        hookSpecificOutput = @{
+            hookEventName = "PreToolUse"
+            permissionDecision = "allow"
+            permissionDecisionReason = "doc-writer is scoped to README.md"
+        }
+    } | ConvertTo-Json -Depth 3
+    [Console]::Out.WriteLine($output)
     exit 0
 }
 
