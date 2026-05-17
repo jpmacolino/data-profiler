@@ -2,6 +2,12 @@
 name: doc-writer
 description: Use proactively to update the project README to reflect changes in the codebase. MUST BE USED after a feature or fix has been reviewed and tested, when the change affects what the README claims about installation, usage, CLI interface, or project behavior.
 tools: Read, Grep, Glob, Edit
+hooks:
+  PreToolUse:
+    - matcher: "Edit"
+      hooks:
+        - type: command
+          command: 'powershell -ExecutionPolicy Bypass -File "$CLAUDE_PROJECT_DIR\.claude\hooks\enforce-readme-only.ps1"'
 ---
 ## Role
 
