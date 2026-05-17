@@ -3,7 +3,16 @@ import math
 import pandas as pd
 import pytest
 
-from data_profiler.stats import _stats_numeric, _stats_string, _stats_datetime
+from data_profiler.stats import (
+    _stats_numeric,
+    _stats_string,
+    _stats_datetime,
+    _stats_boolean,
+    _stats_minimal,
+    stats_for_column,
+    BooleanStats,
+    MinimalStats,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -537,3 +546,407 @@ def test_datetime_duplicates_unique_count_less_than_len():
     assert result["null_count"] == 0
     assert result["min"] == pd.Timestamp("2023-01-01")
     assert result["max"] == pd.Timestamp("2024-06-01")
+
+
+# ===========================================================================
+# _stats_boolean
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Happy path — mix of True/False/null, regular bool dtype
+# ---------------------------------------------------------------------------
+
+def test_boolean_mixed_true_count():
+    series = pd.Series([True, False, True, None], dtype=object)
+    result = _stats_boolean(series)
+    assert result["true_count"] == 2
+
+
+def test_boolean_mixed_false_count():
+    series = pd.Series([True, False, True, None], dtype=object)
+    result = _stats_boolean(series)
+    assert result["false_count"] == 1
+
+
+def test_boolean_mixed_null_count():
+    series = pd.Series([True, False, True, None], dtype=object)
+    result = _stats_boolean(series)
+    assert result["null_count"] == 1
+
+
+def test_boolean_mixed_unique_count():
+    # True and False are the two distinct non-null values
+    series = pd.Series([True, False, True, None], dtype=object)
+    result = _stats_boolean(series)
+    assert result["unique_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Happy path — all-True series
+# ---------------------------------------------------------------------------
+
+def test_boolean_all_true_true_count():
+    series = pd.Series([True, True, True])
+    result = _stats_boolean(series)
+    assert result["true_count"] == 3
+
+
+def test_boolean_all_true_false_count_is_zero():
+    series = pd.Series([True, True, True])
+    result = _stats_boolean(series)
+    assert result["false_count"] == 0
+
+
+def test_boolean_all_true_null_count_is_zero():
+    series = pd.Series([True, True, True])
+    result = _stats_boolean(series)
+    assert result["null_count"] == 0
+
+
+def test_boolean_all_true_unique_count():
+    series = pd.Series([True, True, True])
+    result = _stats_boolean(series)
+    assert result["unique_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Happy path — all-False series
+# ---------------------------------------------------------------------------
+
+def test_boolean_all_false_false_count():
+    series = pd.Series([False, False, False])
+    result = _stats_boolean(series)
+    assert result["false_count"] == 3
+
+
+def test_boolean_all_false_true_count_is_zero():
+    series = pd.Series([False, False, False])
+    result = _stats_boolean(series)
+    assert result["true_count"] == 0
+
+
+def test_boolean_all_false_null_count_is_zero():
+    series = pd.Series([False, False, False])
+    result = _stats_boolean(series)
+    assert result["null_count"] == 0
+
+
+def test_boolean_all_false_unique_count():
+    series = pd.Series([False, False, False])
+    result = _stats_boolean(series)
+    assert result["unique_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Adversarial — nullable BooleanDtype with pd.NA
+# ---------------------------------------------------------------------------
+
+def test_boolean_nullable_dtype_true_count():
+    # pd.NA must not be counted as True — .eq(True).fillna(False) prevents NA propagation
+    series = pd.Series(pd.array([True, False, pd.NA], dtype="boolean"))
+    result = _stats_boolean(series)
+    assert result["true_count"] == 1
+
+
+def test_boolean_nullable_dtype_false_count():
+    series = pd.Series(pd.array([True, False, pd.NA], dtype="boolean"))
+    result = _stats_boolean(series)
+    assert result["false_count"] == 1
+
+
+def test_boolean_nullable_dtype_null_count():
+    # pd.NA must be recognised as null
+    series = pd.Series(pd.array([True, False, pd.NA], dtype="boolean"))
+    result = _stats_boolean(series)
+    assert result["null_count"] == 1
+
+
+def test_boolean_nullable_dtype_unique_count():
+    # nunique() excludes pd.NA — True and False are the two distinct values
+    series = pd.Series(pd.array([True, False, pd.NA], dtype="boolean"))
+    result = _stats_boolean(series)
+    assert result["unique_count"] == 2
+
+
+def test_boolean_nullable_dtype_multiple_nas_null_count():
+    # Ensure every pd.NA element is counted, not just the first
+    series = pd.Series(pd.array([True, pd.NA, pd.NA, pd.NA], dtype="boolean"))
+    result = _stats_boolean(series)
+    assert result["null_count"] == 3
+    assert result["true_count"] == 1
+    assert result["false_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Adversarial — regular bool dtype (no nulls)
+# ---------------------------------------------------------------------------
+
+def test_boolean_regular_bool_dtype_no_nulls_counts():
+    series = pd.Series([True, False, True, False, True], dtype=bool)
+    result = _stats_boolean(series)
+    assert result["true_count"] == 3
+    assert result["false_count"] == 2
+    assert result["null_count"] == 0
+
+
+def test_boolean_regular_bool_dtype_unique_count():
+    series = pd.Series([True, False, True, False, True], dtype=bool)
+    result = _stats_boolean(series)
+    assert result["unique_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Adversarial — single-element series (True)
+# ---------------------------------------------------------------------------
+
+def test_boolean_single_true_true_count():
+    series = pd.Series([True])
+    result = _stats_boolean(series)
+    assert result["true_count"] == 1
+
+
+def test_boolean_single_true_false_count_is_zero():
+    series = pd.Series([True])
+    result = _stats_boolean(series)
+    assert result["false_count"] == 0
+
+
+def test_boolean_single_true_null_count_is_zero():
+    series = pd.Series([True])
+    result = _stats_boolean(series)
+    assert result["null_count"] == 0
+
+
+def test_boolean_single_true_unique_count():
+    series = pd.Series([True])
+    result = _stats_boolean(series)
+    assert result["unique_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Return-type assertions — guard against numpy scalar leakage
+# ---------------------------------------------------------------------------
+
+def test_boolean_count_fields_are_python_int():
+    series = pd.Series([True, False, True])
+    result = _stats_boolean(series)
+    for field in ("true_count", "false_count", "null_count", "unique_count"):
+        assert isinstance(result[field], int), (
+            f"expected plain Python int for '{field}', got {type(result[field])}"
+        )
+
+
+# ===========================================================================
+# _stats_minimal
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Happy path — all-null series
+# ---------------------------------------------------------------------------
+
+def test_minimal_all_null_null_count():
+    series = pd.Series([None, None], dtype="object")
+    result = _stats_minimal(series)
+    assert result["null_count"] == 2
+
+
+def test_minimal_all_null_unique_count_is_zero():
+    series = pd.Series([None, None], dtype="object")
+    result = _stats_minimal(series)
+    assert result["unique_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Adversarial — empty series
+# ---------------------------------------------------------------------------
+
+def test_minimal_empty_series_null_count_is_zero():
+    series = pd.Series([], dtype="object")
+    result = _stats_minimal(series)
+    assert result["null_count"] == 0
+
+
+def test_minimal_empty_series_unique_count_is_zero():
+    series = pd.Series([], dtype="object")
+    result = _stats_minimal(series)
+    assert result["unique_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Adversarial — single non-null value
+# ---------------------------------------------------------------------------
+
+def test_minimal_single_value_null_count_is_zero():
+    series = pd.Series(["only"])
+    result = _stats_minimal(series)
+    assert result["null_count"] == 0
+
+
+def test_minimal_single_value_unique_count():
+    series = pd.Series(["only"])
+    result = _stats_minimal(series)
+    assert result["unique_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Adversarial — mixed-type series (object dtype with heterogeneous values)
+# ---------------------------------------------------------------------------
+
+def test_minimal_mixed_type_null_count():
+    series = pd.Series([1, "a", True])
+    result = _stats_minimal(series)
+    assert result["null_count"] == 0
+
+
+def test_minimal_mixed_type_unique_count():
+    # True == 1 in Python, so avoid mixing bools with ints; use distinct-valued types
+    series = pd.Series([1, "a", 2.5])
+    result = _stats_minimal(series)
+    assert result["unique_count"] == 3
+
+
+# ---------------------------------------------------------------------------
+# Return-type assertions — guard against numpy scalar leakage
+# ---------------------------------------------------------------------------
+
+def test_minimal_count_fields_are_python_int():
+    series = pd.Series([None, None], dtype="object")
+    result = _stats_minimal(series)
+    for field in ("null_count", "unique_count"):
+        assert isinstance(result[field], int), (
+            f"expected plain Python int for '{field}', got {type(result[field])}"
+        )
+
+
+# ===========================================================================
+# stats_for_column — routing
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Happy path — integer series → NumericStats
+# ---------------------------------------------------------------------------
+
+def test_stats_for_column_integer_returns_numeric_stats():
+    series = pd.Series([1, 2, 3, 4, 5])
+    result = stats_for_column(series)
+    assert "mean" in result
+
+
+def test_stats_for_column_integer_mean_value():
+    series = pd.Series([1, 2, 3, 4, 5])
+    result = stats_for_column(series)
+    assert result["mean"] == pytest.approx(3.0)
+
+
+# ---------------------------------------------------------------------------
+# Happy path — float series → NumericStats
+# ---------------------------------------------------------------------------
+
+def test_stats_for_column_float_returns_numeric_stats():
+    series = pd.Series([1.1, 2.2, 3.3])
+    result = stats_for_column(series)
+    assert "mean" in result
+
+
+def test_stats_for_column_float_min_value():
+    series = pd.Series([1.1, 2.2, 3.3])
+    result = stats_for_column(series)
+    assert result["min"] == pytest.approx(1.1)
+
+
+# ---------------------------------------------------------------------------
+# Happy path — string series → StringStats
+# ---------------------------------------------------------------------------
+
+def test_stats_for_column_string_returns_string_stats():
+    series = pd.Series(["apple", "banana", "apple"])
+    result = stats_for_column(series)
+    assert "mode" in result
+
+
+def test_stats_for_column_string_mode_value():
+    series = pd.Series(["apple", "banana", "apple"])
+    result = stats_for_column(series)
+    assert result["mode"] == "apple"
+
+
+# ---------------------------------------------------------------------------
+# Happy path — datetime series → DatetimeStats
+# ---------------------------------------------------------------------------
+
+def test_stats_for_column_datetime_returns_datetime_stats():
+    series = pd.Series(pd.to_datetime(["2023-01-01", "2024-01-01"]))
+    result = stats_for_column(series)
+    assert "range" in result
+
+
+def test_stats_for_column_datetime_range_value():
+    series = pd.Series(pd.to_datetime(["2023-01-01", "2024-01-01"]))
+    result = stats_for_column(series)
+    expected = pd.Timestamp("2024-01-01") - pd.Timestamp("2023-01-01")
+    assert result["range"] == expected
+
+
+# ---------------------------------------------------------------------------
+# Happy path — boolean series → BooleanStats (not MinimalStats)
+# ---------------------------------------------------------------------------
+
+def test_stats_for_column_boolean_returns_boolean_stats():
+    series = pd.Series([True, False, True])
+    result = stats_for_column(series)
+    # BooleanStats has "true_count"; MinimalStats does not
+    assert "true_count" in result
+
+
+def test_stats_for_column_boolean_is_boolean_stats_type():
+    # Verify the returned dict has exactly the BooleanStats keys, not MinimalStats keys
+    series = pd.Series([True, False, True])
+    result = stats_for_column(series)
+    assert set(result.keys()) == {"true_count", "false_count", "null_count", "unique_count"}
+
+
+def test_stats_for_column_boolean_true_count():
+    series = pd.Series([True, False, True])
+    result = stats_for_column(series)
+    assert result["true_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Adversarial — all-null series → MinimalStats
+# ---------------------------------------------------------------------------
+
+def test_stats_for_column_all_null_returns_minimal_stats():
+    series = pd.Series([None, None], dtype="object")
+    result = stats_for_column(series)
+    # MinimalStats has only null_count and unique_count
+    assert set(result.keys()) == {"null_count", "unique_count"}
+
+
+def test_stats_for_column_all_null_null_count():
+    series = pd.Series([None, None], dtype="object")
+    result = stats_for_column(series)
+    assert result["null_count"] == 2
+
+
+def test_stats_for_column_all_null_unique_count():
+    series = pd.Series([None, None], dtype="object")
+    result = stats_for_column(series)
+    assert result["unique_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Adversarial — unknown/mixed-type series → MinimalStats
+# ---------------------------------------------------------------------------
+
+def test_stats_for_column_mixed_type_returns_minimal_stats():
+    # A series with heterogeneous non-string values is classified as 'unknown'
+    # by infer_column_type — triggers the MinimalStats fallback
+    series = pd.Series([1, "a", object()])
+    result = stats_for_column(series)
+    assert set(result.keys()) == {"null_count", "unique_count"}
+
+
+def test_stats_for_column_mixed_type_null_count_is_zero():
+    series = pd.Series([1, "a", object()])
+    result = stats_for_column(series)
+    assert result["null_count"] == 0

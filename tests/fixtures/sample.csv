@@ -1,0 +1,6 @@
+name,age,city,active
+Alice,30,New York,True
+Bob,25,London,False
+Carol,35,New York,True
+Dave,28,Paris,True
+Eve,31,London,False
